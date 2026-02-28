@@ -2,6 +2,8 @@
 
 A Claude Code plugin for discovering, stocking, searching, and retrieving generalizable methods with working code across all projects. Enacts Simon Willison's ["hoard things you know how to do"](https://simonwillison.net/guides/agentic-engineering-patterns/hoard-things-you-know-how-to-do/) insight.
 
+It's designed to support persistence of valuable methods and make them easily discoverable by coding agents.
+
 ## Mental model
 
 The blog post focuses on the idea that the valuable unit is a proven method — "here's how you do X," along with working code that demonstrates it. The "method hoard" here is a global store (`~/.method-hoard/`) of markdown files with YAML frontmatter, indexed by SQLite FTS5 for search. Any project can contribute to and draw from the hoard.
