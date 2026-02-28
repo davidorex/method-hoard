@@ -11,12 +11,15 @@ Index:   ~/.method-hoard/index.db (SQLite FTS5, derived from files)
 
 Usage:
     uv run hoard.py init
-    uv run hoard.py stock          # reads method JSON from stdin
+    uv run hoard.py stock              # reads method JSON from stdin
     uv run hoard.py search <query>
+    uv run hoard.py search --tag <tag>
     uv run hoard.py get <id-or-slug>
     uv run hoard.py heuristic
     uv run hoard.py list
-    uv run hoard.py update         # reads updated method JSON from stdin
+    uv run hoard.py tags
+    uv run hoard.py update             # reads updated method JSON from stdin
+    uv run hoard.py delete <id-or-slug>
     uv run hoard.py reindex
 """
 
@@ -325,23 +328,34 @@ def cmd_stock(_args):
 
 
 def cmd_search(args):
-    """Search the hoard via FTS5."""
-    query = " ".join(args.query)
-    if not query:
-        print(json.dumps({"error": "no query provided"}))
+    """Search the hoard via FTS5 or filter by tag."""
+    tag = args.tag
+    query = " ".join(args.query) if args.query else ""
+
+    if not query and not tag:
+        print(json.dumps({"error": "no query or --tag provided"}))
         sys.exit(1)
 
     db = get_db()
     ensure_schema(db)
 
-    rows = db.execute("""
-        SELECT m.*, snippet(methods_fts, 2, '>>>', '<<<', '...', 32) as snippet
-        FROM methods_fts fts
-        JOIN methods m ON m.id = fts.rowid
-        WHERE methods_fts MATCH ?
-        ORDER BY rank
-        LIMIT 20
-    """, (query,)).fetchall()
+    if tag:
+        # Filter by tag (exact match within comma-separated tags field)
+        rows = db.execute("""
+            SELECT *, '' as snippet FROM methods
+            WHERE ',' || replace(tags, ', ', ',') || ',' LIKE ?
+            ORDER BY title
+            LIMIT 20
+        """, (f"%,{tag},%",)).fetchall()
+    else:
+        rows = db.execute("""
+            SELECT m.*, snippet(methods_fts, 2, '>>>', '<<<', '...', 32) as snippet
+            FROM methods_fts fts
+            JOIN methods m ON m.id = fts.rowid
+            WHERE methods_fts MATCH ?
+            ORDER BY rank
+            LIMIT 20
+        """, (query,)).fetchall()
 
     results = []
     for row in rows:
@@ -358,8 +372,9 @@ def cmd_search(args):
         })
         increment_retrieval(db, row["slug"])
 
+    label = f"tag:{tag}" if tag else query
     db.close()
-    print(json.dumps({"query": query, "count": len(results), "results": results}, indent=2))
+    print(json.dumps({"query": label, "count": len(results), "results": results}, indent=2))
 
 
 def cmd_get(args):
@@ -480,6 +495,66 @@ def cmd_update(_args):
     print(json.dumps({"action": "updated", "slug": slug, "file": str(path)}))
 
 
+def cmd_tags(_args):
+    """List all distinct tags with method counts."""
+    db = get_db()
+    ensure_schema(db)
+
+    rows = db.execute("SELECT tags FROM methods WHERE tags != ''").fetchall()
+    tag_counts: dict[str, int] = {}
+    for row in rows:
+        for tag in row["tags"].split(","):
+            tag = tag.strip()
+            if tag:
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+    sorted_tags = sorted(tag_counts.items(), key=lambda x: (-x[1], x[0]))
+    db.close()
+
+    print(json.dumps({
+        "count": len(sorted_tags),
+        "tags": [{"tag": t, "methods": c} for t, c in sorted_tags],
+    }, indent=2))
+
+
+def cmd_delete(args):
+    """Delete a method by id or slug. Removes the file and the index entry."""
+    identifier = args.identifier
+
+    db = get_db()
+    ensure_schema(db)
+
+    # Find the method
+    row = None
+    if identifier.isdigit():
+        row = db.execute("SELECT * FROM methods WHERE id = ?", (int(identifier),)).fetchone()
+    if row is None:
+        row = db.execute("SELECT * FROM methods WHERE slug = ?", (identifier,)).fetchone()
+
+    if row is None:
+        print(json.dumps({"error": f"method not found: {identifier}"}))
+        sys.exit(1)
+
+    slug = row["slug"]
+    file_path = Path(row["file_path"])
+
+    # Protect item 0
+    if slug == "discover-heuristic":
+        print(json.dumps({"error": "cannot delete item 0 (discover heuristic)"}))
+        sys.exit(1)
+
+    # Remove from index
+    db.execute("DELETE FROM methods WHERE slug = ?", (slug,))
+    db.commit()
+    db.close()
+
+    # Remove the file
+    if file_path.exists():
+        file_path.unlink()
+
+    print(json.dumps({"action": "deleted", "slug": slug, "file": str(file_path)}))
+
+
 def cmd_reindex(_args):
     """Rebuild the FTS5 index from method files."""
     db = get_db()
@@ -502,7 +577,8 @@ def main():
     sub.add_parser("stock", help="Stock a new method (reads JSON from stdin)")
 
     p_search = sub.add_parser("search", help="Search the hoard")
-    p_search.add_argument("query", nargs="+", help="Search query")
+    p_search.add_argument("query", nargs="*", help="Search query")
+    p_search.add_argument("--tag", help="Filter by exact tag")
 
     p_get = sub.add_parser("get", help="Get a method by id or slug")
     p_get.add_argument("identifier", help="Method id or slug")
@@ -510,6 +586,11 @@ def main():
     sub.add_parser("heuristic", help="Output the discover heuristic (item 0)")
     sub.add_parser("list", help="List all methods")
     sub.add_parser("update", help="Update a method (reads JSON from stdin)")
+    sub.add_parser("tags", help="List all distinct tags with method counts")
+
+    p_delete = sub.add_parser("delete", help="Delete a method by id or slug")
+    p_delete.add_argument("identifier", help="Method id or slug")
+
     sub.add_parser("reindex", help="Rebuild the FTS5 index")
 
     args = parser.parse_args()
@@ -522,6 +603,8 @@ def main():
         "heuristic": cmd_heuristic,
         "list": cmd_list,
         "update": cmd_update,
+        "tags": cmd_tags,
+        "delete": cmd_delete,
         "reindex": cmd_reindex,
     }
 

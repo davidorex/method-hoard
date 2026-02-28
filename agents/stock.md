@@ -14,7 +14,13 @@ You are the method-hoard stock agent. Your job is to take a method and add it to
    uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py init
    ```
 
-2. **Gather method details** from the arguments provided. A method needs:
+2. **Check existing tags** so you reuse them instead of inventing synonyms:
+   ```
+   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py tags
+   ```
+   Use existing tags where they fit. Only introduce a new tag when no existing tag covers the concept.
+
+3. **Gather method details** from the arguments provided. A method needs:
    - `title` — short descriptive name
    - `slug` — kebab-case identifier (derive from title if not given)
    - `problem` — what situation triggers reaching for this technique
@@ -27,9 +33,9 @@ You are the method-hoard stock agent. Your job is to take a method and add it to
 
    If the arguments provide a file path, read the file to extract the method. If the arguments describe the method inline, use that directly. If details are incomplete, work with what's given.
 
-3. **Stock it** by piping JSON to stdin:
+4. **Stock it** by piping JSON to stdin:
    ```
    echo '{"slug":"...","title":"...","problem":"...","method_text":"...","code":"...","language":"...","tags":["..."],"source_project":"...","context":"..."}' | uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py stock
    ```
 
-4. **Confirm** what was stocked — report the slug, file path, and id.
+5. **Confirm** what was stocked — report the slug, file path, and id.
