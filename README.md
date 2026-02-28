@@ -25,7 +25,7 @@ Each method is a markdown file with YAML frontmatter in `~/.method-hoard/methods
 
 ## Python CLI
 
-`scripts/hoard.py` handles all storage operations: init, stock, search (including `--tag` filtering), get, heuristic, list, tags, update, delete, reindex. Uses `uv run` with PEP 723 inline script metadata (a pattern due to Simon Willison). All subcommands output JSON for agent consumption.
+`scripts/hoard.py` handles all storage operations: init, stock, search (including `--tag` filtering), get, heuristic, list, tags, update, delete, reindex. Uses `uv run` with PEP 723 inline script metadata (knowledge of which itself came from Simon's blog, too). All subcommands output JSON for agent consumption.
 
 ## Seed
 
