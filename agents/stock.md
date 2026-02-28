@@ -1,7 +1,7 @@
 ---
 name: stock
 description: Stock a new method in the hoard — accepts method details and writes to the global store.
-model: sonnet
+model: opus
 tools: Bash, Read
 ---
 
