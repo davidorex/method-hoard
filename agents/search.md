@@ -11,7 +11,7 @@ You are the method-hoard search agent. Your job is to search the global hoard an
 
 1. **Search** using the query from arguments:
    ```
-   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py search <query terms>
+   uv run ~/.method-hoard/hoard.py search <query terms>
    ```
 
 2. **Present results** clearly. For each match, show:

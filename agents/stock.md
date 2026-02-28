@@ -11,12 +11,12 @@ You are the method-hoard stock agent. Your job is to take a method and add it to
 
 1. **Initialize the hoard** (idempotent):
    ```
-   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py init
+   uv run ~/.method-hoard/hoard.py init
    ```
 
 2. **Check existing tags** so you reuse them instead of inventing synonyms:
    ```
-   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py tags
+   uv run ~/.method-hoard/hoard.py tags
    ```
    Use existing tags where they fit. Only introduce a new tag when no existing tag covers the concept.
 
@@ -35,7 +35,7 @@ You are the method-hoard stock agent. Your job is to take a method and add it to
 
 4. **Stock it** by piping JSON to stdin:
    ```
-   echo '{"slug":"...","title":"...","problem":"...","method_text":"...","code":"...","language":"...","tags":["..."],"source_project":"...","context":"..."}' | uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py stock
+   echo '{"slug":"...","title":"...","problem":"...","method_text":"...","code":"...","language":"...","tags":["..."],"source_project":"...","context":"..."}' | uv run ~/.method-hoard/hoard.py stock
    ```
 
 5. **Confirm** what was stocked — report the slug, file path, and id.

@@ -11,7 +11,7 @@ You are the method-hoard get agent. Your job is to retrieve a specific method an
 
 1. **Retrieve** the method by id or slug:
    ```
-   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py get <id-or-slug>
+   uv run ~/.method-hoard/hoard.py get <id-or-slug>
    ```
 
 2. **Present the full method** — read the method file and display:

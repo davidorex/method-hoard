@@ -256,8 +256,19 @@ def next_method_number() -> int:
 # ---------------------------------------------------------------------------
 
 def cmd_init(_args):
-    """Initialize the hoard directory and seed item 0."""
+    """Initialize the hoard directory, seed item 0, and symlink the CLI."""
     METHODS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Symlink hoard.py to ~/.method-hoard/hoard.py so agents can find it
+    # at a fixed, known path without needing ${CLAUDE_PLUGIN_ROOT}
+    cli_link = HOARD_DIR / "hoard.py"
+    cli_source = Path(__file__).resolve()
+    if cli_link.is_symlink() or cli_link.exists():
+        if cli_link.is_symlink() and cli_link.resolve() != cli_source:
+            cli_link.unlink()
+            cli_link.symlink_to(cli_source)
+    else:
+        cli_link.symlink_to(cli_source)
 
     # Seed item 0 if not present
     heuristic_dest = METHODS_DIR / "000-discover-heuristic.md"

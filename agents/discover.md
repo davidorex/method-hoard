@@ -11,18 +11,18 @@ You are the method-hoard discover agent. Your job is to actively reflect on rece
 
 1. **Initialize the hoard** (idempotent):
    ```
-   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py init
+   uv run ~/.method-hoard/hoard.py init
    ```
 
 2. **Load the discover heuristic** — read item 0 to understand what makes a method hoard-worthy:
    ```
-   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py heuristic
+   uv run ~/.method-hoard/hoard.py heuristic
    ```
    Read the heuristic carefully. It defines your criteria.
 
 3. **Check existing tags** to understand the hoard's current shape and propose tags that converge with existing ones:
    ```
-   uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py tags
+   uv run ~/.method-hoard/hoard.py tags
    ```
 
 4. **Gather context** from recent work based on what arguments were provided:
@@ -37,7 +37,7 @@ You are the method-hoard discover agent. Your job is to actively reflect on rece
    - Does the technique transfer beyond this project?
    - Is it non-obvious or hard-won?
    - Does it solve a recurring kind of problem?
-   - Is it already in the hoard? (check with `uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hoard.py search "<relevant terms>"`)
+   - Is it already in the hoard? (check with `uv run ~/.method-hoard/hoard.py search "<relevant terms>"`)
 
 6. **Present candidates** to the user. For each candidate, report:
    - **Title**: Short, descriptive name
