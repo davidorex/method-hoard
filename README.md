@@ -14,8 +14,8 @@ The system is self-bootstrapping: the discover heuristic (what makes a method ho
 
 Four slash commands, each forking to a subagent to preserve main context:
 
-- `/method-hoard:discover` — Opus agent actively reflects on recent work, applies the heuristic from item 0, surfaces candidates for the user to evaluate
-- `/method-hoard:stock` — Sonnet agent takes method details and writes to the global store
+- `/method-hoard:discover` — Opus agent actively reflects on recent work, applies the heuristic from item 0, surfaces candidates for the user and coding agent to collaboratively evaluate
+- `/method-hoard:stock` — Opus agent takes method details and writes to the global store
 - `/method-hoard:search` — Sonnet agent queries FTS5 index, presents results with snippets
 - `/method-hoard:get` — Sonnet agent retrieves a specific method by id or slug
 
