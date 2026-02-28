@@ -29,10 +29,10 @@ Each method is a markdown file with YAML frontmatter in `~/.method-hoard/methods
 
 `seed/000-discover-heuristic.md` provides heuristic zero — seeded into `~/.method-hoard/methods/` on first init. Contains stock/don't-stock criteria, method extraction patterns, and calibration signals for adjusting the bar over time.
 
-## Usage
+## Installation
 
-```
-claude --plugin-dir /path/to/method-store
-```
+See Anthropic's documentation on [installing Claude Code plugins](https://code.claude.com/docs/en/discover-plugins).
 
-Then: `/method-hoard:discover`, `/method-hoard:search <query>`, `/method-hoard:get <slug>`, `/method-hoard:stock`.
+For local development and testing: `claude --plugin-dir /path/to/method-store`
+
+Once installed: `/method-hoard:discover`, `/method-hoard:search <query>`, `/method-hoard:get <slug>`, `/method-hoard:stock`.
