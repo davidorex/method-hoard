@@ -4,7 +4,7 @@ A Claude Code plugin for discovering, stocking, searching, and retrieving genera
 
 ## Mental model
 
-The blog post focuses on the idea that the valuable unit is a proven method — "here's how you do X" with working code that demonstrates it. The "hoard" is a global store (`~/.method-hoard/`) of markdown files with YAML frontmatter, indexed by SQLite FTS5 for search. Any project can contribute to and draw from the hoard.
+The blog post focuses on the idea that the valuable unit is a proven method — "here's how you do X," along with working code that demonstrates it. The "method hoard" here is a global store (`~/.method-hoard/`) of markdown files with YAML frontmatter, indexed by SQLite FTS5 for search. Any project can contribute to and draw from the hoard.
 
 The system is self-bootstrapping: the discover heuristic (what makes a method hoard-worthy, how to extract and describe methods, calibration signals) is itself hoard item zero, stored and revisable the same way.
 
