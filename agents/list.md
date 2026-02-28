@@ -1,7 +1,7 @@
 ---
 name: list
 description: List all methods in the hoard with their metadata.
-model: haiku
+model: opus
 tools: Bash
 ---
 
