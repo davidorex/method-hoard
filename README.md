@@ -1,6 +1,6 @@
 # method-hoard
 
-A Claude Code plugin for discovering, stocking, searching, and retrieving generalizable methods with working code across all projects. Enacts Simon Willison's ["hoard things you know how to do"](https://simonwillison.net/guides/agentic-engineering-patterns/hoard-things-you-know-how-to-do/) insight.
+A Claude Code plugin for discovering, stocking, searching, and retrieving generalizable methods with working code across all projects. An attempted enactment Simon Willison's ["hoard things you know how to do"](https://simonwillison.net/guides/agentic-engineering-patterns/hoard-things-you-know-how-to-do/) insight.
 
 It's designed to support persistence of valuable methods and make them easily discoverable by coding agents.
 
@@ -12,12 +12,13 @@ The system is self-bootstrapping: the discover heuristic (what makes a method ho
 
 ## Commands
 
-Four slash commands, each forking to a subagent to preserve main context:
+Five slash commands, each forking to a subagent to preserve main context:
 
 - `/method-hoard:discover` — Opus agent actively reflects on recent work, applies the heuristic from item 0, surfaces candidates for the user and coding agent to collaboratively evaluate
 - `/method-hoard:stock` — Opus agent takes method details and writes to the global store
 - `/method-hoard:search` — Sonnet agent queries FTS5 index, presents results with snippets
 - `/method-hoard:get` — Sonnet agent retrieves a specific method by id or slug
+- `/method-hoard:list` — Opus agent lists all methods with metadata, presents actionable follow-up commands
 
 ## Storage
 
@@ -37,4 +38,10 @@ See Anthropic's documentation on [installing Claude Code plugins](https://code.c
 
 For local development and testing: `claude --plugin-dir /path/to/method-store`
 
-Once installed: `/method-hoard:discover`, `/method-hoard:search <query>`, `/method-hoard:get <slug>`, `/method-hoard:stock`.
+Once installed: `/method-hoard:list`, `/method-hoard:discover`, `/method-hoard:search <query>`, `/method-hoard:get <slug>`, `/method-hoard:stock`.
+
+Feel free to fork and / or contribute and / or submit issues if you like.
+
+## License
+
+MIT
