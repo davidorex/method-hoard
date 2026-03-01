@@ -21,6 +21,7 @@ Usage:
     uv run hoard.py update             # reads updated method JSON from stdin
     uv run hoard.py delete <id-or-slug>
     uv run hoard.py reindex
+    uv run hoard.py help
 """
 
 import argparse
@@ -144,7 +145,7 @@ def ensure_schema(db: sqlite3.Connection):
             code TEXT NOT NULL DEFAULT '',
             language TEXT NOT NULL DEFAULT '',
             tags TEXT NOT NULL DEFAULT '',
-            source_project TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT '',
             created TEXT NOT NULL DEFAULT '',
             updated TEXT NOT NULL DEFAULT '',
             retrievals INTEGER NOT NULL DEFAULT 0
@@ -170,6 +171,12 @@ def ensure_schema(db: sqlite3.Connection):
     """)
     db.commit()
 
+    # Migrate: rename source_project → source if old column exists
+    cols = {row[1] for row in db.execute("PRAGMA table_info(methods)").fetchall()}
+    if "source_project" in cols and "source" not in cols:
+        db.execute("ALTER TABLE methods RENAME COLUMN source_project TO source")
+        db.commit()
+
 
 def index_method(db: sqlite3.Connection, data: dict):
     """Insert or update a method in the index."""
@@ -177,12 +184,12 @@ def index_method(db: sqlite3.Connection, data: dict):
     if isinstance(tags, list):
         tags = ", ".join(tags)
     db.execute("""
-        INSERT INTO methods (slug, file_path, title, problem, method_text, code, language, tags, source_project, created, updated, retrievals)
-        VALUES (:slug, :file_path, :title, :problem, :method_text, :code, :language, :tags, :source_project, :created, :updated, :retrievals)
+        INSERT INTO methods (slug, file_path, title, problem, method_text, code, language, tags, source, created, updated, retrievals)
+        VALUES (:slug, :file_path, :title, :problem, :method_text, :code, :language, :tags, :source, :created, :updated, :retrievals)
         ON CONFLICT(slug) DO UPDATE SET
             file_path=excluded.file_path, title=excluded.title, problem=excluded.problem,
             method_text=excluded.method_text, code=excluded.code, language=excluded.language,
-            tags=excluded.tags, source_project=excluded.source_project,
+            tags=excluded.tags, source=excluded.source,
             updated=excluded.updated, retrievals=excluded.retrievals
     """, {
         "slug": data.get("slug", ""),
@@ -193,7 +200,7 @@ def index_method(db: sqlite3.Connection, data: dict):
         "code": data.get("code", ""),
         "language": data.get("language", ""),
         "tags": tags,
-        "source_project": data.get("source_project", ""),
+        "source": data.get("source", ""),
         "created": data.get("created", ""),
         "updated": data.get("updated", ""),
         "retrievals": data.get("retrievals", 0),
@@ -309,7 +316,7 @@ def cmd_stock(_args):
         "problem": data.get("problem", ""),
         "language": data.get("language", ""),
         "tags": tags,
-        "source_project": data.get("source_project", ""),
+        "source": data.get("source", ""),
         "created": today,
         "updated": today,
         "retrievals": 0,
@@ -443,7 +450,7 @@ def cmd_list(_args):
     ensure_schema(db)
 
     rows = db.execute("""
-        SELECT id, slug, title, tags, language, retrievals, created, updated
+        SELECT id, slug, title, tags, language, source, retrievals, created, updated
         FROM methods ORDER BY id
     """).fetchall()
 
@@ -580,6 +587,40 @@ def cmd_reindex(_args):
 # Main
 # ---------------------------------------------------------------------------
 
+def cmd_help(_args, parser=None):
+    """Output structured JSON describing all available commands."""
+    if parser is None:
+        print(json.dumps({"error": "parser not available"}))
+        sys.exit(1)
+    commands = []
+    for name, subparser in parser._subparsers._group_actions[0].choices.items():
+        if name == "help":
+            continue
+        cmd = {"name": name, "help": subparser.description or subparser.format_usage().strip()}
+        # Extract help string from the parent's add_parser call
+        for action in parser._subparsers._group_actions:
+            for choice_name, choice_parser in action.choices.items():
+                if choice_name == name:
+                    # Get the help text registered with add_parser
+                    cmd["help"] = action._choices_actions[
+                        list(action.choices.keys()).index(name)
+                    ].help or ""
+        args_list = []
+        for action in subparser._actions:
+            if action.dest == "help":
+                continue
+            arg = {"name": action.dest if action.option_strings == [] else action.option_strings[0]}
+            if action.help:
+                arg["help"] = action.help
+            if action.nargs:
+                arg["optional"] = True
+            args_list.append(arg)
+        if args_list:
+            cmd["args"] = args_list
+        commands.append(cmd)
+    print(json.dumps({"commands": commands}, indent=2))
+
+
 def main():
     parser = argparse.ArgumentParser(description="method-hoard CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -603,6 +644,7 @@ def main():
     p_delete.add_argument("identifier", help="Method id or slug")
 
     sub.add_parser("reindex", help="Rebuild the FTS5 index")
+    sub.add_parser("help", help="Show available commands as JSON")
 
     args = parser.parse_args()
 
@@ -617,6 +659,7 @@ def main():
         "tags": cmd_tags,
         "delete": cmd_delete,
         "reindex": cmd_reindex,
+        "help": lambda a: cmd_help(a, parser=parser),
     }
 
     dispatch[args.command](args)

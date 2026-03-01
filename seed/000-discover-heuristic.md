@@ -5,7 +5,7 @@ title: Discover Heuristic — What Makes a Method Hoard-Worthy
 problem: Determining which techniques from recent work are generalizable enough to stock in the hoard, without the hoard becoming uselessly full or missing truly valuable methods
 language: prose
 tags: [meta, heuristic, discovery, curation]
-source_project: method-hoard
+source: method-hoard
 created: 2026-03-01
 updated: 2026-03-01
 retrievals: 0

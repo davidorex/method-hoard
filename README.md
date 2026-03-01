@@ -12,13 +12,14 @@ The system is self-bootstrapping: the discover heuristic (what makes a method ho
 
 ## Commands
 
-Five slash commands, each forking to a subagent to preserve main context:
+Six slash commands, most forking to a subagent to preserve main context:
 
 - `/method-hoard:discover` — Opus agent actively reflects on recent work, applies the heuristic from item 0, surfaces candidates for the user and coding agent to collaboratively evaluate
 - `/method-hoard:stock` — Opus agent takes method details and writes to the global store
 - `/method-hoard:search` — Sonnet agent queries FTS5 index, presents results with snippets
 - `/method-hoard:get` — Sonnet agent retrieves a specific method by id or slug
 - `/method-hoard:list` — Opus agent lists all methods with metadata, presents actionable follow-up commands
+- `/method-hoard:help` — shows available commands and usage, generated from the CLI's own documentation
 
 ## Storage
 
@@ -26,7 +27,7 @@ Each method is a markdown file with YAML frontmatter in `~/.method-hoard/methods
 
 ## Python CLI
 
-`scripts/hoard.py` handles all storage operations: init, stock, search (including `--tag` filtering), get, heuristic, list, tags, update, delete, reindex. Uses `uv run` with PEP 723 inline script metadata (knowledge of which itself came from Simon's blog, too). All subcommands output JSON for agent consumption.
+`scripts/hoard.py` handles all storage operations: init, stock, search (including `--tag` filtering), get, heuristic, list, tags, update, delete, reindex, help. Uses `uv run` with PEP 723 inline script metadata (knowledge of which itself came from Simon's blog, too). All subcommands output JSON for agent consumption.
 
 ## Seed
 
@@ -38,7 +39,7 @@ See Anthropic's documentation on [installing Claude Code plugins](https://code.c
 
 For local development and testing: `claude --plugin-dir /path/to/method-store`
 
-Once installed: `/method-hoard:list`, `/method-hoard:discover`, `/method-hoard:search <query>`, `/method-hoard:get <slug>`, `/method-hoard:stock`.
+Once installed: `/method-hoard:help`, `/method-hoard:list`, `/method-hoard:discover`, `/method-hoard:search <query>`, `/method-hoard:get <slug>`, `/method-hoard:stock`.
 
 Feel free to fork and / or contribute and / or submit issues if you like.
 

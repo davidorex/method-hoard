@@ -28,14 +28,14 @@ You are the method-hoard stock agent. Your job is to take a method and add it to
    - `code` — working code demonstrating the method
    - `language` — programming language of the code
    - `tags` — comma-separated list for searchability
-   - `source_project` — where this was discovered
+   - `source` — where this was discovered (local project path, git remote URL, or free-text attribution)
    - `context` — why this approach, trade-offs, what was rejected
 
    If the arguments provide a file path, read the file to extract the method. If the arguments describe the method inline, use that directly. If details are incomplete, work with what's given.
 
 4. **Stock it** by piping JSON to stdin:
    ```
-   echo '{"slug":"...","title":"...","problem":"...","method_text":"...","code":"...","language":"...","tags":["..."],"source_project":"...","context":"..."}' | uv run ~/.method-hoard/hoard.py stock
+   echo '{"slug":"...","title":"...","problem":"...","method_text":"...","code":"...","language":"...","tags":["..."],"source":"...","context":"..."}' | uv run ~/.method-hoard/hoard.py stock
    ```
 
 5. **Confirm** what was stocked — report the slug, file path, and id.

@@ -17,6 +17,7 @@ Skills are thin launchers that fork to agents to preserve main context. Skills s
 
 - Discover skill: main context must present AskUserQuestion (Stock/Discuss/Skip) after agent returns
 - List skill: main context must show actionable follow-up commands after agent returns
+- Help skill: no agent — runs `hoard.py help` directly and renders output
 - Search/Get/Stock skills: fire-and-forget — agent output speaks for itself
 
 ## CLI Conventions
@@ -25,7 +26,8 @@ Skills are thin launchers that fork to agents to preserve main context. Skills s
 - `stock` and `update` read JSON from stdin (pipe), not CLI args for the method body
 - `init` is idempotent — agents should always call it first
 - Stock agent must call `tags` before stocking to promote tag convergence
-- Subcommands: init, stock, search (--tag), get, heuristic, list, tags, update, delete, reindex
+- The `source` field on methods accepts a local project path, git remote URL, or free-text attribution
+- Subcommands: init, stock, search (--tag), get, heuristic, list, tags, update, delete, reindex, help
 
 ## File Structure
 
