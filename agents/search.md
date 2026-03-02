@@ -12,7 +12,10 @@ You are the method-hoard search agent. Your job is to search the global hoard an
 1. **Search** using the query from arguments:
    ```
    uv run ~/.method-hoard/hoard.py search <query terms>
+   uv run ~/.method-hoard/hoard.py search --source <project>
+   uv run ~/.method-hoard/hoard.py search --source <project> <query terms>
    ```
+   Use `--source` to filter by origin project (substring match on the source field). Can be combined with keyword search or used alone.
 
 2. **Present results** clearly. For each match, show:
    - Title and slug

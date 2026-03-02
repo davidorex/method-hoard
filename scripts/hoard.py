@@ -133,7 +133,21 @@ def get_db() -> sqlite3.Connection:
 
 
 def ensure_schema(db: sqlite3.Connection):
-    """Create tables if they don't exist."""
+    """Create tables if they don't exist. Migrates FTS5 schema when columns change."""
+    # Migrate FTS5: if methods_fts exists but lacks the 'source' column,
+    # drop and recreate it (FTS5 doesn't support ALTER TABLE).
+    try:
+        fts_cols = {row[1] for row in db.execute("PRAGMA table_info(methods_fts)").fetchall()}
+        if fts_cols and "source" not in fts_cols:
+            db.executescript("""
+                DROP TRIGGER IF EXISTS methods_ai;
+                DROP TRIGGER IF EXISTS methods_ad;
+                DROP TRIGGER IF EXISTS methods_au;
+                DROP TABLE IF EXISTS methods_fts;
+            """)
+    except sqlite3.OperationalError:
+        pass  # Table doesn't exist yet — fine, CREATE below will handle it
+
     db.executescript("""
         CREATE TABLE IF NOT EXISTS methods (
             id INTEGER PRIMARY KEY,
@@ -151,22 +165,22 @@ def ensure_schema(db: sqlite3.Connection):
             retrievals INTEGER NOT NULL DEFAULT 0
         );
         CREATE VIRTUAL TABLE IF NOT EXISTS methods_fts USING fts5(
-            slug, title, problem, method_text, code, tags, language,
+            slug, title, problem, method_text, code, tags, language, source,
             content='methods', content_rowid='id'
         );
         CREATE TRIGGER IF NOT EXISTS methods_ai AFTER INSERT ON methods BEGIN
-            INSERT INTO methods_fts(rowid, slug, title, problem, method_text, code, tags, language)
-            VALUES (new.id, new.slug, new.title, new.problem, new.method_text, new.code, new.tags, new.language);
+            INSERT INTO methods_fts(rowid, slug, title, problem, method_text, code, tags, language, source)
+            VALUES (new.id, new.slug, new.title, new.problem, new.method_text, new.code, new.tags, new.language, new.source);
         END;
         CREATE TRIGGER IF NOT EXISTS methods_ad AFTER DELETE ON methods BEGIN
-            INSERT INTO methods_fts(methods_fts, rowid, slug, title, problem, method_text, code, tags, language)
-            VALUES ('delete', old.id, old.slug, old.title, old.problem, old.method_text, old.code, old.tags, old.language);
+            INSERT INTO methods_fts(methods_fts, rowid, slug, title, problem, method_text, code, tags, language, source)
+            VALUES ('delete', old.id, old.slug, old.title, old.problem, old.method_text, old.code, old.tags, old.language, old.source);
         END;
         CREATE TRIGGER IF NOT EXISTS methods_au AFTER UPDATE ON methods BEGIN
-            INSERT INTO methods_fts(methods_fts, rowid, slug, title, problem, method_text, code, tags, language)
-            VALUES ('delete', old.id, old.slug, old.title, old.problem, old.method_text, old.code, old.tags, old.language);
-            INSERT INTO methods_fts(rowid, slug, title, problem, method_text, code, tags, language)
-            VALUES (new.id, new.slug, new.title, new.problem, new.method_text, new.code, new.tags, new.language);
+            INSERT INTO methods_fts(methods_fts, rowid, slug, title, problem, method_text, code, tags, language, source)
+            VALUES ('delete', old.id, old.slug, old.title, old.problem, old.method_text, old.code, old.tags, old.language, old.source);
+            INSERT INTO methods_fts(rowid, slug, title, problem, method_text, code, tags, language, source)
+            VALUES (new.id, new.slug, new.title, new.problem, new.method_text, new.code, new.tags, new.language, new.source);
         END;
     """)
     db.commit()
@@ -210,15 +224,28 @@ def index_method(db: sqlite3.Connection, data: dict):
 
 def reindex_all(db: sqlite3.Connection):
     """Rebuild the entire index from method files."""
+    # Drop triggers before bulk delete to avoid FTS5 sync issues
+    # when the FTS table state doesn't match methods (e.g., after migration)
+    db.executescript("""
+        DROP TRIGGER IF EXISTS methods_ai;
+        DROP TRIGGER IF EXISTS methods_ad;
+        DROP TRIGGER IF EXISTS methods_au;
+    """)
     db.execute("DELETE FROM methods")
     db.execute("DELETE FROM methods_fts")
     db.commit()
     if not METHODS_DIR.exists():
+        # Recreate triggers even if no files exist
+        ensure_schema(db)
         return
     for path in sorted(METHODS_DIR.glob("*.md")):
         data = read_method_file(path)
         if data:
             index_method(db, data)
+    # Recreate triggers and rebuild FTS from content table to guarantee consistency
+    ensure_schema(db)
+    db.execute("INSERT INTO methods_fts(methods_fts) VALUES('rebuild')")
+    db.commit()
 
 
 def increment_retrieval(db: sqlite3.Connection, slug: str):
@@ -346,12 +373,13 @@ def cmd_stock(_args):
 
 
 def cmd_search(args):
-    """Search the hoard via FTS5 or filter by tag."""
+    """Search the hoard via FTS5, filter by tag, and/or filter by source."""
     tag = args.tag
+    source = args.source
     query = " ".join(args.query) if args.query else ""
 
-    if not query and not tag:
-        print(json.dumps({"error": "no query or --tag provided"}))
+    if not query and not tag and not source:
+        print(json.dumps({"error": "no query, --tag, or --source provided"}))
         sys.exit(1)
 
     db = get_db()
@@ -359,21 +387,45 @@ def cmd_search(args):
 
     if tag:
         # Filter by tag (exact match within comma-separated tags field)
-        rows = db.execute("""
+        sql = """
             SELECT *, '' as snippet FROM methods
             WHERE ',' || replace(tags, ', ', ',') || ',' LIKE ?
+        """
+        params = [f"%,{tag},%"]
+        if source:
+            sql += " AND source LIKE ?"
+            params.append(f"%{source}%")
+        sql += " ORDER BY title LIMIT 20"
+        rows = db.execute(sql, params).fetchall()
+    elif source and not query:
+        # Source-only filter (no FTS5 query)
+        rows = db.execute("""
+            SELECT *, '' as snippet FROM methods
+            WHERE source LIKE ?
             ORDER BY title
             LIMIT 20
-        """, (f"%,{tag},%",)).fetchall()
+        """, (f"%{source}%",)).fetchall()
     else:
-        rows = db.execute("""
-            SELECT m.*, snippet(methods_fts, 2, '>>>', '<<<', '...', 32) as snippet
-            FROM methods_fts fts
-            JOIN methods m ON m.id = fts.rowid
-            WHERE methods_fts MATCH ?
-            ORDER BY rank
-            LIMIT 20
-        """, (query,)).fetchall()
+        # FTS5 search, optionally scoped by source
+        if source:
+            rows = db.execute("""
+                SELECT m.*, snippet(methods_fts, 2, '>>>', '<<<', '...', 32) as snippet
+                FROM methods_fts fts
+                JOIN methods m ON m.id = fts.rowid
+                WHERE methods_fts MATCH ?
+                AND m.source LIKE ?
+                ORDER BY rank
+                LIMIT 20
+            """, (query, f"%{source}%")).fetchall()
+        else:
+            rows = db.execute("""
+                SELECT m.*, snippet(methods_fts, 2, '>>>', '<<<', '...', 32) as snippet
+                FROM methods_fts fts
+                JOIN methods m ON m.id = fts.rowid
+                WHERE methods_fts MATCH ?
+                ORDER BY rank
+                LIMIT 20
+            """, (query,)).fetchall()
 
     results = []
     for row in rows:
@@ -384,13 +436,21 @@ def cmd_search(args):
             "problem": row["problem"],
             "language": row["language"],
             "tags": row["tags"],
+            "source": row["source"],
             "snippet": row["snippet"],
             "retrievals": row["retrievals"],
             "file_path": row["file_path"],
         })
         increment_retrieval(db, row["slug"])
 
-    label = f"tag:{tag}" if tag else query
+    label_parts = []
+    if query:
+        label_parts.append(query)
+    if tag:
+        label_parts.append(f"tag:{tag}")
+    if source:
+        label_parts.append(f"source:{source}")
+    label = " + ".join(label_parts)
     db.close()
     print(json.dumps({"query": label, "count": len(results), "results": results}, indent=2))
 
@@ -631,6 +691,7 @@ def main():
     p_search = sub.add_parser("search", help="Search the hoard")
     p_search.add_argument("query", nargs="*", help="Search query")
     p_search.add_argument("--tag", help="Filter by exact tag")
+    p_search.add_argument("--source", help="Filter by source (substring match)")
 
     p_get = sub.add_parser("get", help="Get a method by id or slug")
     p_get.add_argument("identifier", help="Method id or slug")
